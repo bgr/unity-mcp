@@ -66,7 +66,8 @@ async def preflight(
         if isinstance(assets, dict) and assets.get("external_changes_dirty") is True:
             try:
                 from services.tools.refresh_unity import refresh_unity
-                await refresh_unity(ctx, mode="if_dirty", scope="all", compile="request", wait_for_ready=True)
+                # Use compile="none" to avoid domain reload - just refresh assets
+                await refresh_unity(ctx, mode="if_dirty", scope="all", compile="none", wait_for_ready=True)
             except Exception:
                 # Best-effort only; fall through to normal tool dispatch.
                 pass
