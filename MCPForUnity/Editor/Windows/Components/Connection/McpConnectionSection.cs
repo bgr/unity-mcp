@@ -388,6 +388,14 @@ namespace MCPForUnity.Editor.Windows.Components.Connection
                 isRunning = false; // Update local state for the rest of this method
             }
 
+            // Auto-reconnect: if server is reachable but no active session, automatically start one.
+            // This handles reconnection after server restarts or temporary disconnects.
+            if (showLocalServerControls && !isRunning && lastLocalServerRunning && !connectionToggleInProgress)
+            {
+                McpLog.Info("Server available but no active session; auto-connecting...");
+                _ = AutoReconnectAsync();
+            }
+
             // For HTTP Local: show session toggle button only when server is running (so user can manually start/end session).
             // For Stdio/HTTP Remote: always show the session toggle button.
             // This separates server lifecycle from session lifecycle for multi-instance scenarios.
@@ -960,6 +968,44 @@ namespace MCPForUnity.Editor.Windows.Components.Connection
             catch (Exception ex)
             {
                 McpLog.Warn($"Failed to end orphaned session: {ex.Message}");
+            }
+            finally
+            {
+                connectionToggleInProgress = false;
+                connectionToggleButton?.SetEnabled(true);
+                UpdateConnectionStatus();
+            }
+        }
+
+        private async Task AutoReconnectAsync()
+        {
+            // Auto-reconnect to a running server when no session is active.
+            // This handles reconnection after server restarts or temporary disconnects.
+            if (connectionToggleInProgress)
+            {
+                return;
+            }
+
+            connectionToggleInProgress = true;
+            connectionToggleButton?.SetEnabled(false);
+
+            try
+            {
+                var bridgeService = MCPServiceLocator.Bridge;
+                bool started = await bridgeService.StartAsync();
+                if (started)
+                {
+                    await VerifyBridgeConnectionAsync();
+                    McpLog.Info("Auto-reconnected to MCP server");
+                }
+                else
+                {
+                    McpLog.Warn("Auto-reconnect failed to start session");
+                }
+            }
+            catch (Exception ex)
+            {
+                McpLog.Warn($"Auto-reconnect failed: {ex.Message}");
             }
             finally
             {
