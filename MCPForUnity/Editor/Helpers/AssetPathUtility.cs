@@ -447,13 +447,18 @@ namespace MCPForUnity.Editor.Helpers
         private static double _offlineCacheTimestamp = -999;
         private const double OfflineCacheTtlSeconds = 30.0;
 
+        // Holds the --from args of the last probe that found the package cached. The probe starts
+        // Python and takes about 2 s, and the static cache above is lost on every domain reload.
+        private const string OfflineProbeSessionKey = "MCPForUnity.UvxOfflineProbeFromArgs";
+
         /// <summary>
         /// Determines whether uvx should use --offline mode for faster startup.
         /// Runs a lightweight probe (uvx --offline ... mcp-for-unity --help) with a 3-second timeout
         /// to check if the package is already cached. If cached, --offline skips the network
         /// dependency check that can hang for 30+ seconds on poor connections.
         /// Returns false if force refresh is enabled (new download needed).
-        /// The result is cached for 30 seconds to avoid redundant subprocess spawns.
+        /// The result is cached for 30 seconds to avoid redundant subprocess spawns, and a
+        /// positive result for the rest of the editor session.
         /// Must be called on the main thread (reads EditorPrefs).
         /// </summary>
         public static bool ShouldUseUvxOffline()
@@ -479,16 +484,23 @@ namespace MCPForUnity.Editor.Helpers
         {
             try
             {
+                string fromArgs = GetBetaServerFromArgs(quoteFromPath: false);
+                // A package in the uv cache stays there unless someone clears the cache by hand.
+                if (SessionState.GetString(OfflineProbeSessionKey, null) == fromArgs)
+                    return true;
+
                 string uvxPath = MCPServiceLocator.Paths.GetUvxPath();
                 if (string.IsNullOrEmpty(uvxPath))
                     return false;
 
-                string fromArgs = GetBetaServerFromArgs(quoteFromPath: false);
                 string probeArgs = string.IsNullOrEmpty(fromArgs)
                     ? "--offline mcp-for-unity --help"
                     : $"--offline {fromArgs} mcp-for-unity --help";
 
-                return ExecPath.TryRun(uvxPath, probeArgs, null, out _, out _, timeoutMs: 3000);
+                bool cached = ExecPath.TryRun(uvxPath, probeArgs, null, out _, out _, timeoutMs: 3000);
+                if (cached)
+                    SessionState.SetString(OfflineProbeSessionKey, fromArgs);
+                return cached;
             }
             catch
             {
