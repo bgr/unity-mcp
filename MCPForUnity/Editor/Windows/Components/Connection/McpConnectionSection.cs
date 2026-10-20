@@ -731,6 +731,7 @@ namespace MCPForUnity.Editor.Windows.Components.Connection
                     bool serverStarted = MCPServiceLocator.Server.StartLocalHttpServer();
                     if (serverStarted)
                     {
+                        HttpAutoConnectHandler.Unpause();
                         await TryAutoStartSessionAsync();
                     }
                     else
@@ -858,6 +859,7 @@ namespace MCPForUnity.Editor.Windows.Components.Connection
                     try { EditorPrefs.DeleteKey(EditorPrefKeys.ResumeStdioAfterReload); } catch { }
                     HttpBridgeReloadHandler.CancelPendingResume();
                     HttpAutoStartHandler.CancelPendingReconnect();
+                    HttpAutoConnectHandler.PauseUntilManualStart();
 
                     await bridgeService.StopAsync();
                     if (httpRemoteForLog)
@@ -897,6 +899,7 @@ namespace MCPForUnity.Editor.Windows.Components.Connection
                     // we are about to establish.
                     HttpBridgeReloadHandler.CancelPendingResume();
                     HttpAutoStartHandler.CancelPendingReconnect();
+                    HttpAutoConnectHandler.Unpause();
 
                     bool started = await bridgeService.StartAsync();
                     if (started)

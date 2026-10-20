@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 using MCPForUnity.Editor.Constants;
 using MCPForUnity.Editor.Helpers;
 using MCPForUnity.Editor.Services.Server;
@@ -500,6 +501,29 @@ namespace MCPForUnity.Editor.Services
             catch
             {
                 return false;
+            }
+        }
+
+        public Task<bool> IsLocalHttpServerReachableAsync()
+        {
+            try
+            {
+                string httpUrl = HttpEndpointUtility.GetLocalBaseUrl();
+                if (!IsLocalUrl(httpUrl))
+                {
+                    return Task.FromResult(false);
+                }
+
+                if (!Uri.TryCreate(httpUrl, UriKind.Absolute, out var uri) || uri.Port <= 0)
+                {
+                    return Task.FromResult(false);
+                }
+
+                return Task.Run(() => TryConnectToLocalPort(uri.Host, uri.Port, timeoutMs: 250));
+            }
+            catch
+            {
+                return Task.FromResult(false);
             }
         }
 

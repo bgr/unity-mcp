@@ -1,3 +1,5 @@
+using System.Threading.Tasks;
+
 namespace MCPForUnity.Editor.Services
 {
     /// <summary>
@@ -85,5 +87,11 @@ namespace MCPForUnity.Editor.Services
         /// </summary>
         /// <returns>True if HTTP transport is enabled and URL satisfies local launch security policy</returns>
         bool CanStartLocalServer();
+
+        /// <summary>
+        /// Same check as <see cref="IsLocalHttpServerReachable"/>, with the connect wait on a
+        /// thread-pool thread. Call it from the main thread, it reads EditorPrefs.
+        /// </summary>
+        Task<bool> IsLocalHttpServerReachableAsync();
     }
 }
